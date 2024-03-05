@@ -1,0 +1,46 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    container:
+      image: ubuntu:trusty
+
+    env:
+      MATRIX_EVAL: "CC=gcc-7 && CXX=g++-7"
+      QT_BASE_DIR: "/opt/qt56"
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo add-apt-repository -y ppa:beineri/opt-qt562-trusty
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y g++-7 cmake libbotan1.10-dev libqrencode-dev libzbar-dev
+        sudo apt-get install -y qt56base
+        eval ${MATRIX_EVAL}
+    
+    - name: Check out the repository code
+      uses: actions/checkout@v2
+
+    - name: Check out libQtShadowsocks code
+      run: |
+        git clone https://github.com/shadowsocks/libQtShadowsocks.git
+        mkdir libQtShadowsocks/build
+        cd libQtShadowsocks/build
+        cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DQt5Core_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Core" -DQt5Network_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Network" -DQt5Test_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Test"
+        make
+        sudo make install
+
+    - name: Build project
+      run: |
+        mkdir build && cd build
+        cmake .. -DQt5Core_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Core" -DQt5Network_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Network" -DQt5Gui_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Gui" -DQt5Widgets_DIR="${QT_BASE_DIR}/lib/cmake/Qt5Widgets" -DQt5DBus_DIR="${QT_BASE_DIR}/lib/cmake/Qt5DBus"
+        make
